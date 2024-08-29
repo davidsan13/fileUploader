@@ -8,6 +8,7 @@
     "serverstart": "SET DEBUG=express-pgsgres:* & npm run dev"
   },
   "dependencies": {
+    "@prisma/client": "^5.19.0",
     "@quixo3/prisma-session-store": "^3.1.13",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "~1.4.4",

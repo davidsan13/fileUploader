@@ -13,9 +13,9 @@ passport.use(
       /* ******************************************************** */
       const user = dummie;
       // const user = rows[0];
-      console.log(user)
-      if (!user) {
-        
+      console.log(user.username == username)
+      if (!user.username == username ) {
+        console.log('wroing')
         return done(null, false, { message: "Incorrect username" });
       }
       // const match = await bcrypt.compare(password, user.password);
