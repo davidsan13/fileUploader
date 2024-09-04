@@ -30,7 +30,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(
-  expressSession({
+  session({
     cookie: {
      maxAge: 7 * 24 * 60 * 60 * 1000 // ms
     },
