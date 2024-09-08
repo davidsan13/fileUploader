@@ -7,11 +7,12 @@ block content
     p Welcome to #{user.username}
     if(message)
       p ${errors}
-    a(href='/log-out') Logout
+    a(href='/users/log-out') Logout
   else 
     h1="Login"
-
-    form(action='/log-in' method="POST")
+    | Don't have an account? 
+    a(href='/users/sign-up') Sign up
+    form(action='/users/log-in' method="POST")
       label(for='username') Username:
       input(name='username', value='', type='text')
       label(for='password') Password:

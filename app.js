@@ -9,6 +9,7 @@ const { PrismaClient } = require('@prisma/client');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+var folderRouter = require('./routes/folders')
 
 require('dotenv').config()
 
@@ -50,6 +51,7 @@ app.use(
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+app.use('/folders', folderRouter)
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

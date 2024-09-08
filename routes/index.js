@@ -8,20 +8,6 @@ router.get('/', function(req, res, next) {
   res.render('index', { user: req.user, title: 'Express' });
 });
 
-router.post('/log-in',  passport.authenticate("local", {
-  successRedirect: "/",
-  failureRedirect: "/"
-}))
-
-
-router.get("/log-out", (req, res, next) => {
-  req.logout((err) => {
-    if (err) {
-      return next(err);
-    }
-    res.redirect("/");
-  });
-});
 
 router.get('/upload', function(req, res, next) {
     res.render('upload')
