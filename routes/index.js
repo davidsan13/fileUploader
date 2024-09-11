@@ -5,7 +5,7 @@ const multer = require('multer')
 const upload = multer({ dest: 'uploads/'})
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  res.render('index', { user: req.user, title: 'Express' });
+  res.redirect('/folders')
 });
 
 

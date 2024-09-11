@@ -7,9 +7,10 @@ const session = require("express-session");
 const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
 const { PrismaClient } = require('@prisma/client');
 
+
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
-var folderRouter = require('./routes/folders')
+var folderRouter = require('./routes/foldersRoute')
 
 require('dotenv').config()
 
@@ -48,6 +49,9 @@ app.use(
     )
   })
 );
+
+app.use('/css', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/css')))
+app.use('/js', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/js')))
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);

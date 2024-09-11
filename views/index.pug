@@ -4,10 +4,15 @@ block content
 
   if user
     h1= user.username
-    p Welcome to #{user.username}
+    p Welcome #{user.username}
+    if(allFolder)
+      ul
+        each folder in allFolder
+          a(href=`/folders/${folder.id}`)=folder.title
     if(message)
       p ${errors}
     a(href='/users/log-out') Logout
+    a(href='/folders/create') New Folder
   else 
     h1="Login"
     | Don't have an account? 

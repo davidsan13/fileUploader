@@ -1,0 +1,22 @@
+extends layout
+
+block content
+
+  h1= folder.title
+  button(type='button' class='btn btn-primary' data-bs-toggle='modal' data-bs-target='#exampleModal') Open
+  div(class='modal' id='exampleModal' tabindex='-1')
+    div(class='modal-dialog')
+      div(class='modal-content')
+        div(class='modal-header')
+          h2(class='modal-title') Modal Heading 
+          button(type='button', class='btn-close' data-bs-dismiss='modal' aria-label='Close')
+        div(class='modal-body') 
+          p testing
+        div(class='modal-footer')
+          button(type='button' class='btn btn-secondary' data-bs-dismiss='modal')
+          button(type='button' class='btn btn-primary') Save Changes
+  form(method="post", action=`/folders/${folder.id}/delete`)
+    input(type='submit', value='Delete')
+  if(folder.file)
+    each file in folder.file
+      li= file

@@ -36,7 +36,6 @@ exports.postSignUp =  [
     res.render("sign-up", {
       errors: errors.array(),
     });
-    console.log(errors)
     return
   } else {
     await prisma.user.create({
@@ -56,12 +55,12 @@ exports.postLogIn = asyncHandler(async (username, password, done) => {
       where: {username: username}
     })
     const user = row[0]
-    console.log(user[0])
+    
     if (!user) {
-      return done(null, false, { message: "Incorrect username" });
+      return done(null, false, { message: "Username does not exist" });
     }
     const match = await bcrypt.compare(password, user.password);
-    console.log(match)
+   
     if (!match) {
       // passwords do not match!
       console.log("does not match")

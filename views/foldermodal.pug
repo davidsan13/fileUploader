@@ -2,7 +2,8 @@ extends layout
 
 block content
 
-h1 New Folder
-form(action='/upload' method='post', enctype='multipart/form-data')
-    label(type=)
-    input(type='file' name='uploaded_file')
+    h1 New Folder
+    form(action='/folders/create' method='POST')
+        label(for='title') Folder Name:
+        input(type='text' name='title')
+        input(type='submit', value='Create Folder')
