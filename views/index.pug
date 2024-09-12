@@ -12,7 +12,13 @@ block content
     if(message)
       p ${errors}
     a(href='/users/log-out') Logout
-    a(href='/folders/create') New Folder
+    button(class='open-form') New Folder
+    dialog(class='modal' id='modal')
+      h1 New Folder
+      form(action='/folders/create' method='POST')
+          label(for='title') Folder Name:
+          input(type='text' name='title')
+          input(type='submit', value='Create Folder')
   else 
     h1="Login"
     | Don't have an account? 
@@ -23,3 +29,15 @@ block content
       label(for='password') Password:
       input(name='password', value='', type='password') 
       input(type='submit', value='Submit')
+
+  script.
+      const modal = document.querySelector('#modal');
+    const openModal = document.querySelector('.open-form');
+    const closeModal = document.querySelector('.close-button');
+
+    openModal.addEventListener('click', () => {
+      modal.showModal()
+    })
+    closeModal.addEventListener('click', () => {
+      modal.close()
+    })
