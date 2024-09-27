@@ -1,9 +1,8 @@
-extends layout
-
-block content
-
-    h1 New Folder
-    form(action='/folders/create' method='POST')
-        label(for='title') Folder Name:
-        input(type='text' name='title')
-        input(type='submit', value='Create Folder')
+button.button(class='open-form') New Folder
+dialog(class='modal' id='modal')
+  h1 New Folder
+  form(action='/folders/create' method='POST')
+      label(for='title') Folder Name:
+      input(type='text' name='title')
+      input(type='submit', value='Create Folder')
+  button(class='close-button') Close

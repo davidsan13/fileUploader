@@ -4,7 +4,158 @@ html
     title= title
     link(rel='stylesheet', href='width=device-width, initial-scale=1, shrink-to-fit=no')
     link(rel='stylesheet', href='/stylesheets/style.css')
+    
     //- script(src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"
-      
-  body
-    block content
+    style.
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        height: 100vh;
+        background-color: #f4f4f4;
+      }
+      .sidebar {
+        width: 250px;
+        background-color: #f1f1f1;
+        padding: 20px;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+      }
+      .main-content {
+        flex-grow: 1;
+        padding: 20px;
+        overflow-y: auto;
+      }
+      h1, h2 {
+        color: #333;
+        margin-top: 0;
+      }
+      .folder-list {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+        flex-grow: 1;
+        overflow-y: auto;
+      }
+      .folder-item {
+        padding: 10px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .folder-item:hover {
+        background-color: #e0e0e0;
+      }
+      .folder-item.active {
+        background-color: #d0d0d0;
+        font-weight: bold;
+      }
+      .user-section {
+        margin-top: auto;
+        text-align: center;
+        padding-top: 20px;
+        border-top: 1px solid #ddd;
+      }
+      .avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        margin-bottom: 10px;
+      }
+      .auth-button {
+        display: inline-block;
+        padding: 8px 16px;
+        font-size: 14px;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        outline: none;
+        color: #fff;
+        background-color: #4CAF50;
+        border: none;
+        border-radius: 5px;
+        transition: background-color 0.3s;
+      }
+      .auth-button:hover {
+        background-color: #45a049;
+      }
+      .auth-button.logout {
+        background-color: #f44336;
+      }
+      .auth-button.logout:hover {
+        background-color: #d32f2f;
+      }
+      form {
+        margin-bottom: 20px;
+      }
+      .file-input-wrapper {
+        position: relative;
+        display: inline-block;
+      }
+      .file-input {
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+      }
+      .button {
+        display: inline-block;
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        outline: none;
+        color: #fff;
+        background-color: #4CAF50;
+        border: none;
+        border-radius: 5px;
+        box-shadow: 0 2px #999;
+        transition: all 0.3s ease;
+      }
+      .button:hover {
+        background-color: #45a049;
+      }
+      .button:active {
+        background-color: #3e8e41;
+        box-shadow: 0 1px #666;
+        transform: translateY(2px);
+      }
+      .file-list {
+        list-style-type: none;
+        padding: 0;
+      }
+      .file-item {
+        background-color: #fff;
+        margin-bottom: 10px;
+        padding: 15px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      }
+      .file-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .file-actions a {
+        margin-left: 10px;
+        text-decoration: none;
+        color: #0066cc;
+      }
+      .current-folder {
+        background-color: #f1f1f1;
+        padding: 10px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+        font-weight: bold;
+      }
+    block scripts
+      script(src='../util/helper.js')
+  
+  block content

@@ -1,7 +1,12 @@
 const modal = document.querySelector('#modal');
-const openModal = document.querySelector('.open-button');
-const closeModal = document.querySelector('.close-button')
+const openModal = document.querySelector('.open-form');
+const closeModal = document.querySelector('.close-button');
 
+console.log(modal)
 openModal.addEventListener('click', () => {
-  // console.log('hello')
+
+  modal.showModal()
+})
+closeModal.addEventListener('click', () => {
+  modal.close()
 })

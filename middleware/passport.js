@@ -2,11 +2,9 @@ const passport = require("passport");
 const LocalStrategy = require('passport-local').Strategy;
 
 const userController = require('../controllers/userController')
-// remove when db install
-
 
 passport.use(
-  new LocalStrategy(userController.postLogIn)
+  new LocalStrategy(userController.postLogin)
 );
 
 passport.serializeUser((user, done) => {

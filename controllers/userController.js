@@ -4,6 +4,10 @@ const bcrypt = require('bcryptjs')
 const { body, validationResult } = require("express-validator")
 const asyncHandler = require('express-async-handler')
 
+exports.getSignup = asyncHandler(async( req, res, next ) => {
+  res.render('signup');
+})
+
 exports.postSignUp =  [
   body('username', 'User already Exist')
     .custom((value, {req}) => {
@@ -49,7 +53,11 @@ exports.postSignUp =  [
   }
 })]
 
-exports.postLogIn = asyncHandler(async (username, password, done) => {
+exports.getLogin = asyncHandler(async(req, res) => {
+  res.render('login')
+})
+
+exports.postLogin = asyncHandler(async (username, password, done) => {
   try {
     const row = await prisma.user.findMany({
       where: {username: username}
@@ -83,34 +91,13 @@ exports.deserializeUser = asyncHandler(async (id, done) => {
     done(err);
   }
 })
-exports.getFolderCreate = asyncHandler(async (req, res, next) => {
-  res.send("Get Folder")
-})
-  
-exports.postFolderCreate = asyncHandler(async (req, res, next) => {
-  res.send("Post Folder")
+
+exports.getLogout = asyncHandler(async( req, res, next ) => {
+  req.logout((err) => {
+    if (err) {
+      return next(err);
+    }
+    res.redirect("/");
+  });
 })
 
-exports.getAllFolder = asyncHandler(async (req, res, next) => {
-  res.send("Get All Folder")
-})
-
-exports.getFolder = asyncHandler(async (req, res, next) => {
-  res.send("Get A Folder")
-})
-
-exports.getFolderUpdate = asyncHandler(async (req, res, next) => {
-  res.send("Get Update Folder")
-})
-
-exports.postFolderUpdate = asyncHandler(async (req, res, next) => {
-  res.send("Post Update Folder")
-})
-
-exports.getFolderDelete= asyncHandler(async (req, res, next) => {
-  res.send("Get Delete Folder")
-})
-
-exports.postFolderDelete= asyncHandler(async (req, res, next) => {
-  res.send("Post Delete Folder")
-})

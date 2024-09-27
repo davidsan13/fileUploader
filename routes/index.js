@@ -1,6 +1,6 @@
 var express = require('express');
 var router = express.Router();
-const passport = require("../authenticate/passport")
+const passport = require("../middleware/passport")
 const multer = require('multer')
 const upload = multer({ dest: 'uploads/'})
 /* GET home page. */

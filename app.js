@@ -9,12 +9,13 @@ const { PrismaClient } = require('@prisma/client');
 
 
 var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
-var folderRouter = require('./routes/foldersRoute')
+var usersRouter = require('./routes/usersRoute');
+var foldersRouter = require('./routes/foldersRoute');
+var filesRouter = require('./routes/filesRoute');
 
 require('dotenv').config()
 
-const passport = require("./authenticate/passport")
+const passport = require("./middleware/passport")
 
 var app = express();
 
@@ -55,7 +56,9 @@ app.use('/js', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
-app.use('/folders', folderRouter)
+app.use('/folders', foldersRouter);
+app.use('/files', filesRouter);
+
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

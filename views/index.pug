@@ -2,42 +2,64 @@ extends layout
 
 block content
 
-  if user
-    h1= user.username
-    p Welcome #{user.username}
-    if(allFolder)
-      ul
-        each folder in allFolder
-          a(href=`/folders/${folder.id}`)=folder.title
-    if(message)
-      p ${errors}
-    a(href='/users/log-out') Logout
-    button(class='open-form') New Folder
-    dialog(class='modal' id='modal')
-      h1 New Folder
-      form(action='/folders/create' method='POST')
-          label(for='title') Folder Name:
-          input(type='text' name='title')
-          input(type='submit', value='Create Folder')
-  else 
-    h1="Login"
-    | Don't have an account? 
-    a(href='/users/sign-up') Sign up
-    form(action='/users/log-in' method="POST")
-      label(for='username') Username:
-      input(name='username', value='', type='text')
-      label(for='password') Password:
-      input(name='password', value='', type='password') 
-      input(type='submit', value='Submit')
+
+  .sidebar
+    h2 Folders
+    if user
+      ul.folder-list
+        each folder in folders
+          li.folder-item(data-folder-name=folder.title class=folder.active ? 'active' : '')= folder.title
+      .user-section
+      
+        img.avatar(src=user.avatarUrl, alt="User Avatar")
+        p= user.name
+        a.auth-button.logout(href="/users/logout") Logout
+    else
+      a.auth-button(href="/users/login") Login
+
+  .main-content
+    h1 File Uploader
+
+    if user
+      form(action="/upload", method="POST", enctype="multipart/form-data")
+        .file-input-wrapper
+          input.file-input(type="file", name="file", required)
+          button.button(type="submit") Choose File & Upload
+
+      h2 Files in #{currentFolder}
+      .current-folder
+        | Current Folder: 
+        span#current-folder-name=currentFolder
+      h1#selected-folder-name No folder selected
+      if files && files.length > 0
+        ul.file-list
+          each file in files
+            li.file-item
+              .file-info
+                span= file.name
+                .file-actions
+                  a(href=`/download/${file.id}`) Download
+                  a(href=`/delete/${file.id}`) Delete
+      else
+        p No files in this folder.
+    else
+      p Please log in to view and upload files.
 
   script.
-      const modal = document.querySelector('#modal');
-    const openModal = document.querySelector('.open-form');
-    const closeModal = document.querySelector('.close-button');
+    document.querySelector('.file-input')?.addEventListener('change', function() {
+      document.querySelector('.button').textContent = this.files[0].name;
+    });
 
-    openModal.addEventListener('click', () => {
-      modal.showModal()
-    })
-    closeModal.addEventListener('click', () => {
-      modal.close()
-    })
+    document.querySelectorAll('.folder-item').forEach(folder => {
+      folder.addEventListener('click', function() {
+        document.querySelectorAll('.folder-item').forEach(f => f.classList.remove('active'));
+        this.classList.add('active');
+        console.log('Selected folder:', this.textContent);
+        // Here you would typically load the files for the selected folder
+        // You'll need to implement this functionality on the server side
+        const folderName = this.textContent;
+        document.getElementById('current-folder-name').textContent = folderName;
+      });
+    });
+
+  
