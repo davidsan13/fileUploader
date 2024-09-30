@@ -3,7 +3,7 @@ const prisma = new PrismaClient()
 const { body, validationResult } = require("express-validator")
 const asyncHandler = require('express-async-handler')
 var LocalStorage = require('node-localstorage').LocalStorage
-
+const { createFolder, renameFolder, getFolders} = require('../util/folderUtils')
 localStorage = new LocalStorage('./scratch')
 
 exports.getFolderCreate = asyncHandler(async (req, res, next) => {
@@ -12,11 +12,11 @@ exports.getFolderCreate = asyncHandler(async (req, res, next) => {
   
 exports.postFolderCreate = [ 
   
-  // body('title')
+  // body('name')
   // .custom((value, {req}) => {
   //   return prisma.folder.findFirst({
   //     where: {
-  //       title: value
+  //       name: value
   //     }
   //   }).then(userDoc => {
   //     if(userDoc) {
@@ -29,7 +29,7 @@ exports.postFolderCreate = [
   const errors = validationResult(req)
 
   const user = req.user
-  const title = req.body.title
+  const folderName = req.body.name
   
   try {
     if(!errors.isEmpty()) {
@@ -38,46 +38,46 @@ exports.postFolderCreate = [
         errors: errors.array(),
       })
     } else {
-      await prisma.folder.create({
-        data: {
-          title: title,
-          userId: user.id,
-        }
-      })
-      res.redirect('/')
+      const newFolder = await createFolder(folderName, user.id)
+      res.status(201).json(newFolder)
     }
-  } catch(err) {
-    return done(err)
+  } catch(error) {
+    console.error('Error creating folder:', error);
+    res.status(500).send('Error creating folder')
   }
 })]
 
 exports.getAllFolder = asyncHandler(async (req, res, next) => {
   try {
    
-    // if(!user) {
-    //   res.render('index')
-    // }
     const user = req.user
     const folders = await prisma.folder.findMany({
       where: {
         userId: user.id
       },
     })
-    const currentFolder = req.query.folder || folders[0]?.title || 'Root'
+    const currentFolderName = req.query.folder || folders[0]?.name || 'Root'
+
+    const foldersWithActive = folders.map(folder => ({
+      ...folder,
+      active: folder.name === currentFolderName
+    }));
+
+    const currentFolder = foldersWithActive.find(f => f.active) || { name: currentFolderName, active: true };
 
     const files = await prisma.file.findMany({
       where: {
-        folderId: folders.find(f => f.name === currentFolder)?.id
+        folderId: currentFolder.id
       }
     })
     res.render('index', { 
-      folders,
+      folders: foldersWithActive,
       files,
       currentFolder,
       user
     })
   } catch(error) {
-    console.log.error('Erro fetching files:', error);
+    console.error('Erro fetching files:', error);
     res.status(500).json({ error: 'Error fetching file' })
   }
   
@@ -105,9 +105,10 @@ exports.getFolder = asyncHandler(async (req, res, next) => {
 
 exports.postFolderUpdate = asyncHandler(async (req, res, next) => {
   const folderId = req.params.folderId
-  // const userId = req.user.id
-  const title = req.body.title
+  const user = req.user
+  const folderName = req.body.name
   try {
+    const uniqueName = await getUniqueFolderName(folderName, user.id)
     const folder = await prisma.folder.findUnique({
       where: {
         id: folderId
@@ -119,17 +120,18 @@ exports.postFolderUpdate = asyncHandler(async (req, res, next) => {
           id: folderId,
         },
         data: {
-          title: title,
+          name: uniqueName,
         }
       })
       res.redirect(`folders/${folderId}`)
     }
-  } catch(err) {
-    return done(err)
+  } catch(error) {
+    console.error('Error renaming folder:', error);
+    res.status(500).send('Error renaming folder')
   }
 })
 
-exports.getFolderDelete= asyncHandler(async (req, res, next) => {
+exports.getFolderDelete = asyncHandler(async (req, res, next) => {
   const folderId = req.params.folderId
   try {
     const folder = await prisma.folder.delete({
@@ -144,7 +146,7 @@ exports.getFolderDelete= asyncHandler(async (req, res, next) => {
   res.send("Get Delete Folder")
 })
 
-exports.postFolderDelete= asyncHandler(async (req, res, next) => {
+exports.postFolderDelete = asyncHandler(async (req, res, next) => {
   const folderId = req.params.folderId
   try {
     const folder = await prisma.folder.findUnique({
@@ -164,3 +166,17 @@ exports.postFolderDelete= asyncHandler(async (req, res, next) => {
     res.status(500).json({ error: 'Internal Server Error'})
   }
 })
+
+async function getUniqueFolderName(desiredName, userId) {
+  let name = desiredName;
+  let counter = 1;
+  let folderExists = await prisma.folder.findFirst({ where: { name, userId } });
+
+  while (folderExists) {
+    name = `${desiredName} (${counter})`;
+    counter++;
+    folderExists = await prisma.folder.findFirst({ where: { name } });
+  }
+
+  return name;
+}

@@ -2,13 +2,13 @@ extends layout
 
 block content
  
-  h1= folder.title
+  h1= folder.name
 
   button(class='open-form') edit 
   dialog(class='modal' id='modal')
     form(method='POST', action=`/folders/${folder.id}/update`)
-      label(for='title') Folder Name:
-      input(type='text' name='title' value= folder.title)
+      label(for='name') Folder Name:
+      input(type='text' name='name' value= folder.name)
       input(type='submit', value='Update')
     button(class='close-button') close modal
    

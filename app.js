@@ -7,6 +7,7 @@ const session = require("express-session");
 const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
 const { PrismaClient } = require('@prisma/client');
 
+const isAuthenticated = require('./middleware/authenticate')
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/usersRoute');
@@ -31,6 +32,7 @@ app.use(passport.session());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
 
 app.use(
   session({

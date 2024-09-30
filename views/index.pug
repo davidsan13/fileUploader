@@ -1,14 +1,13 @@
 extends layout
 
 block content
-
-
   .sidebar
     h2 Folders
+    button#newFolderBtn Create New Folder
     if user
       ul.folder-list
         each folder in folders
-          li.folder-item(data-folder-name=folder.title class=folder.active ? 'active' : '')= folder.title
+          li.folder-item(data-folder-name=folder.name class=folder.active ? 'active' : '')= folder.name
       .user-section
       
         img.avatar(src=user.avatarUrl, alt="User Avatar")
@@ -25,12 +24,9 @@ block content
         .file-input-wrapper
           input.file-input(type="file", name="file", required)
           button.button(type="submit") Choose File & Upload
-
-      h2 Files in #{currentFolder}
       .current-folder
-        | Current Folder: 
-        span#current-folder-name=currentFolder
-      h1#selected-folder-name No folder selected
+        | Files in: 
+        span#current-folder-name=currentFolder.name
       if files && files.length > 0
         ul.file-list
           each file in files
@@ -44,22 +40,122 @@ block content
         p No files in this folder.
     else
       p Please log in to view and upload files.
-
+    #newFolderModal.modal
+      .modal-content
+        .modal-header
+          h2.modal-title Create New Folder
+          span.close &times;
+        form#newFolderForm
+          input(type="text" id="folderName" name="folderName" placeholder="Enter folder name" required)
+          button.button(type="submit") Create Folder
   script.
-    document.querySelector('.file-input')?.addEventListener('change', function() {
-      document.querySelector('.button').textContent = this.files[0].name;
-    });
+    document.addEventListener('DOMContentLoaded', () => {
+        const folderList = document.querySelector('.folder-list');
+        const fileList = document.querySelector('.file-list');
+        const currentFolderName = document.getElementById('current-folder-name');
+        const currentFolderFiles = document.getElementById('current-folder-files');
+        
+        folderList.addEventListener('click', async (event) => {
+          if (event.target.classList.contains('folder-item')) {
+            const folderName = event.target.textContent;
+            
+            // Update UI to show selected folder
+            document.querySelectorAll('.folder-item').forEach(f => f.classList.remove('active'));
+            event.target.classList.add('active');
+            currentFolderName.textContent = folderName;
 
-    document.querySelectorAll('.folder-item').forEach(folder => {
-      folder.addEventListener('click', function() {
-        document.querySelectorAll('.folder-item').forEach(f => f.classList.remove('active'));
-        this.classList.add('active');
-        console.log('Selected folder:', this.textContent);
-        // Here you would typically load the files for the selected folder
-        // You'll need to implement this functionality on the server side
-        const folderName = this.textContent;
-        document.getElementById('current-folder-name').textContent = folderName;
+            try {
+              // Fetch files for the selected folder
+              const response = await fetch(`/files/api/files?folder=${encodeURIComponent(folderName)}`);
+              if (!response.ok) throw new Error('Failed to fetch files');
+              const files = await response.json();
+              //- console.log(files)
+              // Update the file list
+              updateFileList(files);
+            } catch (error) {
+              console.error('Error:', error);
+              alert('Failed to load files for the selected folder');
+            }
+          }
+        });
+
+        function updateFileList(files) {
+          if (files.length === 0) {
+            fileList.innerHTML = '<li>No files in this folder.</li>';
+          } else {
+            fileList.innerHTML = files.map(file => `
+              <li class="file-item">
+                <div class="file-info">
+                  <span>${file.name}</span>
+                  <div class="file-actions">
+                    <a href="/download/${file.id}">Download</a>
+                    <a href="/delete/${file.id}">Delete</a>
+                  </div>
+                </div>
+              </li>
+            `).join('');
+          }
+        }
+
+        // File input handling
+        const fileInput = document.querySelector('.file-input');
+        const fileButton = document.querySelector('.button');
+        
+        fileInput?.addEventListener('change', function() {
+          fileButton.textContent = this.files[0].name;
+        });
       });
-    });
+    const modal = document.getElementById('newFolderModal');
+    const btn = document.getElementById('newFolderBtn');
+    const span = document.getElementsByClassName('close')[0];
+    const form = document.getElementById('newFolderForm');
 
-  
+    btn.onclick = function() {
+      modal.style.display = 'flex';
+      setTimeout(() => modal.classList.add('show'), 10);
+      document.getElementById('folderName').focus();
+    }
+
+    span.onclick = function() {
+      closeModal()
+    }
+
+    window.onclick = function(event) {
+      if (event.target == modal) {
+        closeModal()
+      }
+    }
+
+    form.onsubmit = async function(e) {
+      e.preventDefault();
+      const folderName = document.getElementById('folderName').value;
+      try {
+        const response = await fetch('/api/folders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: folderName }),
+        });
+        if (!response.ok) {
+          throw new Error('Failed to create folder');
+        }
+        const newFolder = await response.json();
+        // Add the new folder to the list
+        const folderList = document.querySelector('.folder-list');
+        const li = document.createElement('li');
+        li.textContent = newFolder.name;
+        li.classList.add('folder-item');
+        folderList.appendChild(li);
+        // Close the modal and reset the form
+        modal.style.display = 'none';
+        form.reset();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to create folder');
+      }
+    }
+    function closeModal() {
+      modal.classList.remove('show');
+      setTimeout(() => modal.style.display = 'none', 300);
+    }
