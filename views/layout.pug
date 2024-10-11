@@ -53,17 +53,36 @@ html
         background-color: #d0d0d0;
         font-weight: bold;
       }
-      .user-section {
-        margin-top: auto;
-        text-align: center;
-        padding-top: 20px;
-        border-top: 1px solid #ddd;
+      .user-info {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        background-color: #f0f0f0;
+        border-radius: 5px;
       }
       .avatar {
-        width: 60px;
-        height: 60px;
+        margin-right: 10px;
+      }
+      .avatar-image {
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
-        margin-bottom: 10px;
+        object-fit: cover;
+      }
+
+      .user-details {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .username {
+        font-weight: bold;
+        font-size: 16px;
+      }
+
+      .user-role {
+        font-size: 14px;
+        color: #666;
       }
       .auth-button {
         display: inline-block;
@@ -83,10 +102,10 @@ html
         background-color: #45a049;
       }
       .auth-button.logout {
-        background-color: #f44336;
+        background-color: #4CAF50;
       }
       .auth-button.logout:hover {
-        background-color: #d32f2f;
+        background-color: #1e8822;
       }
       form {
         margin-bottom: 20px;
@@ -117,10 +136,10 @@ html
         border: none;
         border-radius: 5px;
         box-shadow: 0 2px #999;
-        transition: all 0.3s ease;
+        transition: background-color 0.3s;
       }
       .button:hover {
-        background-color: #45a049;
+        background-color: #1e8822;
       }
       .button:active {
         background-color: #3e8e41;
@@ -234,7 +253,7 @@ html
         padding: 0.5rem 1rem;
         font-size: 1rem;
         color: #fff;
-        background-color: #0056b3;
+        background-color: #4CAF50;
         border: none;
         border-radius: 4px;
         cursor: pointer;
@@ -242,21 +261,97 @@ html
       }
 
       .btn:hover {
-        background-color: #003d82;
+        background-color: #1e8822;
       }
 
       #newFolderBtn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: inline-block;
+        padding: 8px 16px;
+        font-size: 14px;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        outline: none;
+        color: #fff;
+        background-color: #4CAF50;
+        border: none;
+        border-radius: 5px;
+        transition: background-color 0.3s;
         margin-bottom: 1rem;
-        width: 100%;
+        transition: background-color 0.3s ease;
+      }
+      #newFolderBtn:hover {
+        background-color: #1e8822;
       }
 
       .icon {
         margin-right: 0.5rem;
       }
-    block scripts
-      script(src='../util/helper.js')
-  
+    
+  //- script. 
+    document.addEventListener('DOMContentLoaded', () => {
+      const folderList = document.querySelector('.folder-list');
+      const fileList = document.querySelector('.file-list');
+      const currentFolderName = document.getElementById('current-folder-name');
+      const currentFolderFiles = document.getElementById('current-folder-files');
+      
+      folderList.addEventListener('click', async (event) => {
+        if (event.target.classList.contains('folder-item')) {
+          const folderName = event.target.textContent;
+          
+          // Update UI to show selected folder
+          document.querySelectorAll('.folder-item').forEach(f => f.classList.remove('active'));
+          event.target.classList.add('active');
+          currentFolderName.textContent = folderName;
+
+          try {
+            // Fetch files for the selected folder
+            const response = await fetch(`/files/api/?folder=${encodeURIComponent(folderName)}`);
+            console.log(response)
+            if (!response.ok) throw new Error('Failed to fetch files');
+            const files = await response.json();
+            
+            //- // Update the file list
+            updateFileList(files);
+            console.log("files")
+          } catch (error) {
+
+            console.error('Error:', error);
+            alert('Failed to load files for the selected folder');
+          }
+        }
+      });
+
+      function updateFileList(files) {
+        console.log('updaintgfile')
+        if (files.length === 0) {
+          fileList.innerHTML = '<li>No files in this folder.</li>';
+        } else {
+          fileList.innerHTML = files.map(file => `
+            <li class="file-item">
+              <div class="file-info">
+                <span><a href= '/files/${file.id}'>${file.name}</a></span>
+                <div class="file-actions">
+                  <a href="/download/${file.id}">Download</a>
+                  <a href="/delete/${file.id}">Delete</a>
+                </div>
+              </div>
+            </li>
+          `).join('');
+        }
+      }
+
+      // File input handling
+      //- const fileInput = document.querySelector('.file-input');
+      //- const fileButton = document.querySelector('.button');
+      //- const fileNameSpan = document.getElementById('selectedFileName');
+
+      const fileInput = document.getElementById('fileUpload');
+      const fileNameSpan = document.getElementById('selectedFileName');
+      const uploadButton = document.getElementById('uploadButton');
+
+      fileInput?.addEventListener('change', function() {
+        fileNameSpan.textContent = this.files[0].name;
+      });
+    });
   block content

@@ -18,7 +18,7 @@ async function getUniqueFolderName(desiredName, userId) {
 async function createFolder(folderName, userId) {
   const uniqueName = await getUniqueFolderName(folderName, userId);
   return prisma.folder.create({
-    data: { name: uniqueName }
+    data: { name: uniqueName, userId: userId }
   });
 }
 

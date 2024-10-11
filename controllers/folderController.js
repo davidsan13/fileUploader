@@ -7,7 +7,14 @@ const { createFolder, renameFolder, getFolders} = require('../util/folderUtils')
 localStorage = new LocalStorage('./scratch')
 
 exports.getFolderCreate = asyncHandler(async (req, res, next) => {
-  res.render("foldermodal")
+  try {
+    // const file = req.body.file
+    console.log('hello')
+    res.render("foldermodal")
+  } catch(error) {
+    console.error(error)
+  }
+  
 })
   
 exports.postFolderCreate = [ 
@@ -24,10 +31,10 @@ exports.postFolderCreate = [
   //     }
   //   })
   // }),
-
+  
   asyncHandler(async (req, res, next) => {
   const errors = validationResult(req)
-
+  console.log('createing folder')
   const user = req.user
   const folderName = req.body.name
   
@@ -49,7 +56,7 @@ exports.postFolderCreate = [
 
 exports.getAllFolder = asyncHandler(async (req, res, next) => {
   try {
-   
+    
     const user = req.user
     const folders = await prisma.folder.findMany({
       where: {

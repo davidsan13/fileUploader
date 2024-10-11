@@ -8,7 +8,6 @@ const { PrismaSessionStore } = require('@quixo3/prisma-session-store');
 const { PrismaClient } = require('@prisma/client');
 
 const isAuthenticated = require('./middleware/authenticate')
-
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/usersRoute');
 var foldersRouter = require('./routes/foldersRoute');
@@ -55,6 +54,7 @@ app.use(
 
 app.use('/css', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/css')))
 app.use('/js', express.static(path.join(__dirname, 'node_modules/bootstrap/dist/js')))
+
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);

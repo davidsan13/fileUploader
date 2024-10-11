@@ -1,110 +1,203 @@
 extends layout
 
 block content
+  style.
+    .custom-file-upload {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    }
+    .upload-button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .upload-button:hover {
+      background-color: #45a049;
+    }
+
+    .selected-file-name {
+      margin-left: 10px;
+      font-style: italic;
+    }
   .sidebar
     h2 Folders
     button#newFolderBtn Create New Folder
     if user
       ul.folder-list
         each folder in folders
-          li.folder-item(data-folder-name=folder.name class=folder.active ? 'active' : '')= folder.name
-      .user-section
-      
-        img.avatar(src=user.avatarUrl, alt="User Avatar")
-        p= user.name
-        a.auth-button.logout(href="/users/logout") Logout
+          li.folder-item(data-folder-id=folder.id class=folder.active ? 'active' : '')= folder.name
+      .user-info
+        .avatar
+          img.avatar-image(src="/images/default-avatar.png" alt="User Avatar")
+        .user-details
+          span.username= user.username
+          
+      a.auth-button.logout(href="/users/logout") Logout
     else
       a.auth-button(href="/users/login") Login
 
   .main-content
     h1 File Uploader
 
-    if user
-      form(action="/upload", method="POST", enctype="multipart/form-data")
-        .file-input-wrapper
-          input.file-input(type="file", name="file", required)
-          button.button(type="submit") Choose File & Upload
-      .current-folder
-        | Files in: 
-        span#current-folder-name=currentFolder.name
+    .custom-file-upload
+      input#fileUpload(type="file" name="file" style="display: none;")
+      label.upload-button(for="fileUpload") Choose File
+      button#uploadButton.upload-button(type="submit") Upload
+      span#selectedFileName.selected-file-name
+
+
+    //- form(action="/files/upload", method="POST", enctype="multipart/form-data")
+    //-   .file-input-wrapper
+    //-     input.file-input(type="file", name="file", required)
+    //-     input(type="hidden", name="folderId", value=currentFolder.id)
+
+    //-     button.button(type="submit") Choose File & Upload
+
+    .current-folder
+      | Files in: 
+      span#current-folder-name=currentFolder.name
+    ul.file-list
       if files && files.length > 0
-        ul.file-list
-          each file in files
-            li.file-item
-              .file-info
-                span= file.name
-                .file-actions
-                  a(href=`/download/${file.id}`) Download
-                  a(href=`/delete/${file.id}`) Delete
+        each file in files
+          li.file-item
+            .file-info
+              span= file.name
+              .file-actions
+                a(href=`/download/${file.id}`) Download
+                a(href=`/delete/${file.id}`) Delete
       else
         p No files in this folder.
-    else
-      p Please log in to view and upload files.
-    #newFolderModal.modal
-      .modal-content
-        .modal-header
-          h2.modal-title Create New Folder
-          span.close &times;
-        form#newFolderForm
-          input(type="text" id="folderName" name="folderName" placeholder="Enter folder name" required)
-          button.button(type="submit") Create Folder
+  #newFolderModal.modal(style='display: none;')
+    .modal-content
+      .modal-header
+        h2.modal-title Create New Folder
+        span.close &times;
+      form#newFolderForm
+        input(type="text" id="folderName" name="folderName" placeholder="Enter folder name" required)
+        button.button(type="submit") Create Folder
   script.
+    document.addEventListener('DOMContentLoaded', function() {
+      
+    });
     document.addEventListener('DOMContentLoaded', () => {
-        const folderList = document.querySelector('.folder-list');
-        const fileList = document.querySelector('.file-list');
-        const currentFolderName = document.getElementById('current-folder-name');
-        const currentFolderFiles = document.getElementById('current-folder-files');
-        
-        folderList.addEventListener('click', async (event) => {
-          if (event.target.classList.contains('folder-item')) {
-            const folderName = event.target.textContent;
+      const folderList = document.querySelector('.folder-list');
+      const fileList = document.querySelector('.file-list');
+      const currentFolderName = document.getElementById('current-folder-name');
+      const currentFolderFiles = document.getElementById('current-folder-files');
+      let currentFolderId = null;
+      folderList.addEventListener('click', async (event) => {
+        if (event.target.classList.contains('folder-item')) {
+          const folderId = event.target.dataset.folderId;
+          console.log(folderId)
+          const folderName = event.target.textContent;
+          
+          // Update UI to show selected folder
+          document.querySelectorAll('.folder-item').forEach(f => f.classList.remove('active'));
+          event.target.classList.add('active');
+          currentFolderName.textContent = folderName;
+          currentFolderId = folderId
+          try {
+            // Fetch files for the selected folder
+            const response = await fetch(`/files/api/?folder=${encodeURIComponent(folderId)}`);
             
-            // Update UI to show selected folder
-            document.querySelectorAll('.folder-item').forEach(f => f.classList.remove('active'));
-            event.target.classList.add('active');
-            currentFolderName.textContent = folderName;
+            if (!response.ok) throw new Error('Failed to fetch files');
+            const files = await response.json();
+            
+            //- // Update the file list
+            updateFileList(files);
+            console.log("files")
+          } catch (error) {
 
-            try {
-              // Fetch files for the selected folder
-              const response = await fetch(`/files/api/files?folder=${encodeURIComponent(folderName)}`);
-              if (!response.ok) throw new Error('Failed to fetch files');
-              const files = await response.json();
-              //- console.log(files)
-              // Update the file list
-              updateFileList(files);
-            } catch (error) {
-              console.error('Error:', error);
-              alert('Failed to load files for the selected folder');
-            }
-          }
-        });
-
-        function updateFileList(files) {
-          if (files.length === 0) {
-            fileList.innerHTML = '<li>No files in this folder.</li>';
-          } else {
-            fileList.innerHTML = files.map(file => `
-              <li class="file-item">
-                <div class="file-info">
-                  <span>${file.name}</span>
-                  <div class="file-actions">
-                    <a href="/download/${file.id}">Download</a>
-                    <a href="/delete/${file.id}">Delete</a>
-                  </div>
-                </div>
-              </li>
-            `).join('');
+            console.error('Error:', error);
+            alert('Failed to load files for the selected folder');
           }
         }
-
-        // File input handling
-        const fileInput = document.querySelector('.file-input');
-        const fileButton = document.querySelector('.button');
-        
-        fileInput?.addEventListener('change', function() {
-          fileButton.textContent = this.files[0].name;
-        });
       });
+
+      function updateFileList(files) {
+        console.log('updaintgfile')
+        if (files.length === 0) {
+          fileList.innerHTML = '<li>No files in this folder.</li>';
+        } else {
+          fileList.innerHTML = files.map(file => `
+            <li class="file-item">
+              <div class="file-info">
+                <span><a href= '/files/${file.id}'>${file.name}</a></span>
+                <div class="file-actions">
+                  <a href="/download/${file.id}">Download</a>
+                  <a href="/delete/${file.id}">Delete</a>
+                </div>
+              </div>
+            </li>
+          `).join('');
+        }
+      }
+
+      // File input handling
+      //- const fileInput = document.querySelector('.file-input');
+      //- const fileButton = document.querySelector('.button');
+      
+      //- fileInput?.addEventListener('change', function() {
+      //-   fileButton.textContent = this.files[0].name;
+      //- });
+
+      const fileInput = document.getElementById('fileUpload');
+      const fileNameSpan = document.getElementById('selectedFileName');
+      const uploadButton = document.getElementById('uploadButton');
+
+      fileInput?.addEventListener('change', function() {
+        if (this.files && this.files.length > 0) {
+          fileNameSpan.textContent = this.files[0].name;
+        } else {
+          fileNameSpan.textContent = '';
+        }
+      });
+
+      uploadButton.addEventListener('click', async function() {
+        if ( fileInput.files && fileInput.files.length > 0) {
+          const formData = new FormData();
+          formData.append('file', fileInput.files[0]);
+          
+          // Add the current folder ID if you're organizing files into folders
+          formData.append('folderId', currentFolderId);
+
+          try {
+            const response = await fetch('/files/upload', {
+              method: 'POST',
+              body: formData
+            });
+
+            if (!response.ok) {
+              throw new Error('Upload failed');
+            }
+
+            const result = await response.json();
+            console.log('File uploaded successfully:', result);
+            
+            // Clear the file input and name display
+            fileInput.value = '';
+            fileNameSpan.textContent = '';
+
+            // Optionally, refresh the file list
+            // fetchFiles(currentFolderName);
+
+            alert('File uploaded successfully!');
+          } catch (error) {
+            console.error('Error uploading file:', error);
+            alert('Failed to upload file. Please try again.');
+          }
+        } else {
+          alert('Please select a file first');
+        }
+      });
+      
+    });
     const modal = document.getElementById('newFolderModal');
     const btn = document.getElementById('newFolderBtn');
     const span = document.getElementsByClassName('close')[0];
@@ -112,11 +205,12 @@ block content
 
     btn.onclick = function() {
       modal.style.display = 'flex';
-      setTimeout(() => modal.classList.add('show'), 10);
       document.getElementById('folderName').focus();
+       setTimeout(() => modal.classList.add('show'), 10);
     }
 
     span.onclick = function() {
+      
       closeModal()
     }
 
@@ -130,7 +224,7 @@ block content
       e.preventDefault();
       const folderName = document.getElementById('folderName').value;
       try {
-        const response = await fetch('/api/folders', {
+        const response = await fetch('/folders/create', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
