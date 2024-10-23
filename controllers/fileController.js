@@ -9,14 +9,14 @@ const supabaseUrl = process.env.SUPA_URL
 const supabaseKey = process.env.SUPABASE_KEY
 const supabase = createClient(supabaseUrl, supabaseKey)
 // const storage = multer.memoryStorage()
-const upload = multer({dest: 'uploads/'})
-
+const upload = multer({dest: 'uploads'})
+const { decode } = require('base64-arraybuffer')
 const path = require('path');
 const fs = require('fs');
 
+
 exports.getFiles = asyncHandler(async (req, res) => {
   try {
-    console.log(req.query.folder)
     const folderName = req.query.folder;
     // const folder = await prisma.folder.findFirst({ where: { name: folderName } });
     const files = await prisma.file.findMany({
@@ -28,83 +28,52 @@ exports.getFiles = asyncHandler(async (req, res) => {
     console.error('Error fetching files:', error);
     res.status(500).json({ error: 'Error fetching files' });
   }
-  
+
 });
 
-exports.postFile = asyncHandler( upload.single('file'), async(req, res) => {
-  // if(!req.file) {
-  //   return res.status(400).send('No file uploaded.');
-  // }
-  
-  // try {
-    
-    // const filePath = path.join(__dirname, file.path)
-    // console.log(file)
-    // if(!file) {
-    //   res.status(400).json({message: 'Please Upload a File'});
-    //   return
-    // }
-    // const fileBase64 = decode(file.buffer.toString('base64'))
-    
-    // const { data, error } = await supabase.storage
-    //   .from('files')
-    //   .upload(file.originalname, fileBase64, {
-    //     contentType: "image/png"
-    //   })
-    // if(error) {
-    //   throw error;
-    // }
-
-    // const {data: doc} = supabase.storage
-    //   .from('images')
-    //   .getPublicUrl(data.path)
-    // console.log(file)
-    // res.status(200).json({ file: doc.publicUrl})
-  //   res.status('400')
-  // } catch(error) {
-  //   console.error('Error')
-  //   res.status(500).json({error: error})
-  // }
-
+exports.postFile = asyncHandler( async(req, res) => {
   if (!req.file) {
     return res.status(400).send('No file uploaded.');
   }
-  
+
   try {
+    
     const file = req.file;
-    const filePath = path.join(__dirname, file.path);
-    console.log(file)
+    const filePath = path.join(file.path);
+
     // Read file content
     const fileContent = fs.readFileSync(filePath);
+    
+    const decodedFile = decode(file.originalname.toString('base64'));
+    console.log(decodedFile)
 
     // Upload to Supabase Storage
     const { data, error } = await supabase
       .storage
-      .from('files')
-      .upload(`files/${file.originalname}`, fileContent, {
+      .from('newFiles')
+      .upload(`${req.user.id}/${file.originalname}`, fileContent, {
         contentType: file.mimetype,
       });
-    
+    console.log(data)
     if(error) throw new Error(`Supabase upload error: ${error.message}`)
-    const { publicURL, error: urlError } = supabase
+    const { data: publicURL, error: urlError } = supabase
       .storage
-      .from('files')
-      .getPublicUrl(`files/${file.originalname}`)
+      .from('newFiles')
+      .getPublicUrl(data.path)
     
     if(urlError) throw new Error(`Error getting public URL: ${urlError.message}`)
 
     if (error) throw error;
 
-    // Clean up the temporary file
+  
     fs.unlinkSync(filePath);
-
-    // Here, you might want to save the file metadata to your database
-    // For example, using Prisma:
+    console.log(publicURL)
+    
     const savedFile = await prisma.file.create({
       data: {
         name: file.originalname,
         size: file.size,
-        url: data.path,
+        url: publicURL.publicUrl,
         folderId: req.body.folderId // Assuming you're sending the folder ID
       }
     });
@@ -112,6 +81,64 @@ exports.postFile = asyncHandler( upload.single('file'), async(req, res) => {
     res.status(200).json({ message: 'File uploaded successfully', file: savedFile });
   } catch (error) {
     console.error('Error uploading file:', error);
-    res.status(500).json({ error: 'Failed to upload file' });
+    res.status(500).json({ error: 'Server:Failed to upload file' });
+  }
+})
+
+exports.deleteFile = asyncHandler( async(req,res) => {
+  const fileId = req.params.fileId
+  const fileName = req.params.fileName
+  const filePath = `${req.user.id}/${fileName}`
+  console.log(filePath)
+  console.log(fileId)
+  try {
+    await prisma.file.delete({
+      where: {
+        id: fileId
+      }
+    })
+
+    const { data, error } = await supabase
+      .storage
+      .from('newFiles')
+      .remove([filePath])
+
+    if(error) throw error
+    res.redirect('/')
+  } catch(error) {
+    res.status(500).json({ error: 'Internal Server Error'})
+  }
+})
+exports.downloadFile = asyncHandler(async(req,res) => {
+  const fileId = req.params.fileId
+  try {
+    const fileURL = await prisma.file.findUnique({
+      where: {
+        id: fileId
+      },
+      select: {
+        name: true
+      }
+    })
+    const filePath = `${req.user.id}/${fileURL.name}`
+    console.log(filePath)
+    const { data, error } = await supabase
+      .storage
+      .from('newFiles')
+      .download(filePath)
+      // .getPublicUrl(fileURL.url, {
+      //   download: true,
+      // })
+    console.log(data.type)
+    const buffer = await data.arrayBuffer();
+    const fileBuffer = Buffer.from(buffer)
+    res.set({
+      "Content-Type": data.type,
+      "Content-Disposition": `attachment; filename="${fileURL.name}"`,
+    });
+    res.send(fileBuffer)
+    if (error) throw error
+  } catch(error) {
+    res.status(500).json({error: 'Internal Server Error'})
   }
 })

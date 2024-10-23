@@ -47,6 +47,7 @@ block content
 
     .custom-file-upload
       input#fileUpload(type="file" name="file" style="display: none;")
+      input(type="hidden", name="folderId", value=currentFolder.id)
       label.upload-button(for="fileUpload") Choose File
       button#uploadButton.upload-button(type="submit") Upload
       span#selectedFileName.selected-file-name
@@ -54,10 +55,10 @@ block content
 
     //- form(action="/files/upload", method="POST", enctype="multipart/form-data")
     //-   .file-input-wrapper
-    //-     input.file-input(type="file", name="file", required)
+    //-     input.fileinput(type="file", name="file", required)
     //-     input(type="hidden", name="folderId", value=currentFolder.id)
 
-    //-     button.button(type="submit") Choose File & Upload
+    //-     button.button(type="submit") Upload
 
     .current-folder
       | Files in: 
@@ -69,8 +70,8 @@ block content
             .file-info
               span= file.name
               .file-actions
-                a(href=`/download/${file.id}`) Download
-                a(href=`/delete/${file.id}`) Delete
+                a(href=`files/download/${file.id}`) Download
+                a(href=`files/delete/${file.id}/${file.name}`) Delete
       else
         p No files in this folder.
   #newFolderModal.modal(style='display: none;')
@@ -128,10 +129,10 @@ block content
           fileList.innerHTML = files.map(file => `
             <li class="file-item">
               <div class="file-info">
-                <span><a href= '/files/${file.id}'>${file.name}</a></span>
+                <span>${file.name}</span>
                 <div class="file-actions">
-                  <a href="/download/${file.id}">Download</a>
-                  <a href="/delete/${file.id}">Delete</a>
+                  <a href="/files/download/${file.id}">Download</a>
+                  <a href="/files/delete/${file.id}">Delete</a>
                 </div>
               </div>
             </li>
@@ -150,7 +151,7 @@ block content
       const fileInput = document.getElementById('fileUpload');
       const fileNameSpan = document.getElementById('selectedFileName');
       const uploadButton = document.getElementById('uploadButton');
-
+      const folderId = document.getElementById('')
       fileInput?.addEventListener('change', function() {
         if (this.files && this.files.length > 0) {
           fileNameSpan.textContent = this.files[0].name;
@@ -161,6 +162,7 @@ block content
 
       uploadButton.addEventListener('click', async function() {
         if ( fileInput.files && fileInput.files.length > 0) {
+          currentFolderId = document.querySelector('.active').dataset.folderId
           const formData = new FormData();
           formData.append('file', fileInput.files[0]);
           

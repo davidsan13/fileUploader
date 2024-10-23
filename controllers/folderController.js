@@ -9,7 +9,6 @@ localStorage = new LocalStorage('./scratch')
 exports.getFolderCreate = asyncHandler(async (req, res, next) => {
   try {
     // const file = req.body.file
-    console.log('hello')
     res.render("foldermodal")
   } catch(error) {
     console.error(error)
