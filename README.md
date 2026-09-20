@@ -4,6 +4,8 @@ A multi-user file manager built with Node.js and Express. Users sign up, organiz
 
 I built this to practice full-stack fundamentals end to end: authentication, relational data modeling, file storage, and the security details that are easy to skip in a tutorial project.
 
+**[Live demo](https://fileuploader-1und.onrender.com/users/login)** — hosted on Render's free tier, so the first load after a period of inactivity can take about a minute to wake up.
+
 ## Screenshots
 
 ![File list](docs/files.png)
@@ -91,6 +93,4 @@ prisma/schema.prisma Data model: User, Folder, File, Session
 - Nested folders, file rename and move, and shareable expiring links
 - Image previews and a per-user storage quota
 
-## Author
 
-David San, [github.com/davidsan13](https://github.com/davidsan13)
