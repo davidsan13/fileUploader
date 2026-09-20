@@ -34,6 +34,17 @@ I built this to practice full-stack fundamentals end to end: authentication, rel
 | File storage | Supabase Storage |
 | Validation | express-validator, multer |
 
+## Architecture
+
+```mermaid
+flowchart LR
+    B[Browser<br/>Pug pages + JS] -->|HTTPS, session cookie, CSRF token| E[Express app on Render<br/>routes, controllers, middleware]
+    E -->|Prisma queries scoped to the user| D[(PostgreSQL on Supabase<br/>users, folders, files, sessions)]
+    E -->|upload / download after ownership check| S[(Supabase Storage<br/>file bytes)]
+```
+
+File bytes never go straight from the browser to storage. Every upload and download passes through Express, which confirms the file belongs to the logged-in user first, so the storage bucket can stay private.
+
 ## Design and security decisions
 
 - **Ownership checks on every query.** Files and folders are always looked up through the logged-in user, so guessing another user's ID returns a 404 instead of their data.
