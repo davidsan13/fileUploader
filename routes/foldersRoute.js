@@ -1,21 +1,12 @@
-var express = require('express');
-var router = express.Router();
-var folderController = require('../controllers/folderController')
+const router = require('express').Router();
+const requireAuth = require('../middleware/authenticate');
+const folders = require('../controllers/folderController');
 
-const isAuthenticated = require('../middleware/authenticate')
+router.use(requireAuth);
 
-router.get('/', isAuthenticated, folderController.getAllFolder)
-
-router.get('/create', folderController.getFolderCreate)
-
-router.post('/create', folderController.postFolderCreate)
-
-router.get('/:folderId', folderController.getFolder)
-
-router.post('/:folderId/update', folderController.postFolderUpdate)
-
-router.post('/:folderId/delete', folderController.postFolderDelete)
-
-
+router.get('/', folders.index);
+router.post('/', folders.create);
+router.post('/:folderId/rename', folders.rename);
+router.post('/:folderId/delete', folders.remove);
 
 module.exports = router;

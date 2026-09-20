@@ -1,14 +1,11 @@
-var express = require('express');
-var router = express.Router();
-var fileController = require('../controllers/fileController')
-const multer = require('multer')
-const upload = multer({dest: 'uploads/'})
+const router = require('express').Router();
+const requireAuth = require('../middleware/authenticate');
+const files = require('../controllers/fileController');
 
-router.get('/api', fileController.getFiles)
+router.use(requireAuth);
 
-router.post('/upload', upload.single('file'), fileController.postFile)
+router.post('/upload', files.upload);
+router.get('/:fileId/download', files.download);
+router.post('/:fileId/delete', files.remove);
 
-router.get('/delete/:fileId/:fileName', fileController.deleteFile)
-
-router.get('/download/:fileId', fileController.downloadFile)
 module.exports = router;

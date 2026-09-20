@@ -1,257 +1,137 @@
 extends layout
 
-block content
-  style.
-    .custom-file-upload {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    }
-    .upload-button {
-      padding: 10px 20px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
+block body
+  .app
+    header.topbar
+      button.icon-btn(type="button" data-sidebar-toggle aria-label="Open folders" aria-controls="sidebar" aria-expanded="false")
+        +icon('menu')
+      span.topbar-title= currentFolder.name
 
-    .upload-button:hover {
-      background-color: #45a049;
-    }
+    aside#sidebar.sidebar
+      .brand
+        +icon('cloud')
+        span FileUploader
 
-    .selected-file-name {
-      margin-left: 10px;
-      font-style: italic;
-    }
-  .sidebar
-    h2 Folders
-    button#newFolderBtn Create New Folder
-    if user
-      ul.folder-list
+      .sidebar-head
+        span.eyebrow Folders
+        button.icon-btn(type="button" data-open="newFolderDialog" aria-label="New folder" title="New folder")
+          +icon('plus')
+
+      nav.folder-list(aria-label="Folders")
         each folder in folders
-          li.folder-item(data-folder-id=folder.id class=folder.active ? 'active' : '')= folder.name
-      .user-info
-        .avatar
-          img.avatar-image(src="/images/default-avatar.png" alt="User Avatar")
-        .user-details
-          span.username= user.username
-          
-      a.auth-button.logout(href="/users/logout") Logout
-    else
-      a.auth-button(href="/users/login") Login
+          a.folder(href=`/folders?folder=${folder.id}` class=(folder.id === currentFolder.id ? 'active' : '') aria-current=(folder.id === currentFolder.id ? 'page' : false))
+            +icon('folder')
+            span.folder-name= folder.name
+            span.count= folder._count.file
 
-  .main-content
-    h1 File Uploader
+      .user-card
+        .avatar(aria-hidden="true")= user.username.charAt(0).toUpperCase()
+        span.user-name= user.username
+        form(method="POST" action="/users/logout")
+          +csrf
+          button.icon-btn(type="submit" aria-label="Log out" title="Log out")
+            +icon('logout')
 
-    .custom-file-upload
-      input#fileUpload(type="file" name="file" style="display: none;")
-      input(type="hidden", name="folderId", value=currentFolder.id)
-      label.upload-button(for="fileUpload") Choose File
-      button#uploadButton.upload-button(type="submit") Upload
-      span#selectedFileName.selected-file-name
+    .scrim(data-sidebar-toggle hidden)
 
+    main.main
+      .page-head
+        div
+          h1= currentFolder.name
+          p.muted #{files.length} #{files.length === 1 ? 'file' : 'files'} · #{formatBytes(totalSize)}
+        .head-actions
+          button.btn.btn-ghost(type="button" data-open="renameDialog")
+            +icon('edit')
+            | Rename
+          button.btn.btn-ghost.btn-danger-text(type="button" data-open="deleteFolderDialog")
+            +icon('trash')
+            | Delete
 
-    //- form(action="/files/upload", method="POST", enctype="multipart/form-data")
-    //-   .file-input-wrapper
-    //-     input.fileinput(type="file", name="file", required)
-    //-     input(type="hidden", name="folderId", value=currentFolder.id)
+      #dropzone.dropzone(data-folder-id=currentFolder.id data-max-mb=maxUploadMb tabindex="0" role="button" aria-label="Upload files: drop them here or press Enter to browse")
+        input#fileInput(type="file" multiple hidden)
+        .dz-icon
+          +icon('upload')
+        p.dz-title
+          strong Drag &amp; drop files here
+          |  or
+          |
+          span.link Browse
+        p.hint Up to #{maxUploadMb} MB per file
+        .progress(hidden)
+          .progress-label
+          .progress-track
+            .progress-bar
 
-    //-     button.button(type="submit") Upload
-
-    .current-folder
-      | Files in: 
-      span#current-folder-name=currentFolder.name
-    ul.file-list
-      if files && files.length > 0
-        each file in files
-          li.file-item
-            .file-info
-              span= file.name
+      if files.length
+        ul.file-list
+          each file in files
+            li.file-row
+              .file-icon(class=`kind-${fileKind(file.name)}`)= (extension(file.name) || 'file').slice(0, 4)
+              .file-main
+                span.file-name(title=file.name)= file.name
+                span.file-meta #{formatBytes(file.size)} · #{formatDate(file.createAt)}
               .file-actions
-                a(href=`files/download/${file.id}`) Download
-                a(href=`files/delete/${file.id}/${file.name}`) Delete
+                a.icon-btn(href=`/files/${file.id}/download` aria-label=`Download ${file.name}` title="Download")
+                  +icon('download')
+                button.icon-btn.danger(type="button" data-delete-file=`/files/${file.id}/delete` data-name=file.name aria-label=`Delete ${file.name}` title="Delete")
+                  +icon('trash')
       else
-        p No files in this folder.
-  #newFolderModal.modal(style='display: none;')
-    .modal-content
-      .modal-header
-        h2.modal-title Create New Folder
-        span.close &times;
-      form#newFolderForm
-        input(type="text" id="folderName" name="folderName" placeholder="Enter folder name" required)
-        button.button(type="submit") Create Folder
-  script.
-    document.addEventListener('DOMContentLoaded', function() {
-      
-    });
-    document.addEventListener('DOMContentLoaded', () => {
-      const folderList = document.querySelector('.folder-list');
-      const fileList = document.querySelector('.file-list');
-      const currentFolderName = document.getElementById('current-folder-name');
-      const currentFolderFiles = document.getElementById('current-folder-files');
-      let currentFolderId = null;
-      folderList.addEventListener('click', async (event) => {
-        if (event.target.classList.contains('folder-item')) {
-          const folderId = event.target.dataset.folderId;
-          console.log(folderId)
-          const folderName = event.target.textContent;
-          
-          // Update UI to show selected folder
-          document.querySelectorAll('.folder-item').forEach(f => f.classList.remove('active'));
-          event.target.classList.add('active');
-          currentFolderName.textContent = folderName;
-          currentFolderId = folderId
-          try {
-            // Fetch files for the selected folder
-            const response = await fetch(`/files/api/?folder=${encodeURIComponent(folderId)}`);
-            
-            if (!response.ok) throw new Error('Failed to fetch files');
-            const files = await response.json();
-            
-            //- // Update the file list
-            updateFileList(files);
-            console.log("files")
-          } catch (error) {
+        .empty
+          +icon('folder')
+          h2 This folder is empty
+          p.muted Drop a file above to add your first one.
 
-            console.error('Error:', error);
-            alert('Failed to load files for the selected folder');
-          }
-        }
-      });
+  //- Dialogs
+  dialog#newFolderDialog.dialog
+    form(method="POST" action="/folders")
+      +csrf
+      .dialog-head
+        h2 New folder
+        button.icon-btn(type="button" data-close aria-label="Close")
+          +icon('x')
+      .field
+        label(for="newFolderName") Folder name
+        input#newFolderName(type="text" name="name" maxlength="60" placeholder="e.g. Tax documents" required)
+      .dialog-foot
+        button.btn.btn-ghost(type="button" data-close) Cancel
+        button.btn.btn-primary(type="submit") Create folder
 
-      function updateFileList(files) {
-        console.log('updaintgfile')
-        if (files.length === 0) {
-          fileList.innerHTML = '<li>No files in this folder.</li>';
-        } else {
-          fileList.innerHTML = files.map(file => `
-            <li class="file-item">
-              <div class="file-info">
-                <span>${file.name}</span>
-                <div class="file-actions">
-                  <a href="/files/download/${file.id}">Download</a>
-                  <a href="/files/delete/${file.id}">Delete</a>
-                </div>
-              </div>
-            </li>
-          `).join('');
-        }
-      }
+  dialog#renameDialog.dialog
+    form(method="POST" action=`/folders/${currentFolder.id}/rename`)
+      +csrf
+      .dialog-head
+        h2 Rename folder
+        button.icon-btn(type="button" data-close aria-label="Close")
+          +icon('x')
+      .field
+        label(for="renameName") Folder name
+        input#renameName(type="text" name="name" maxlength="60" value=currentFolder.name required)
+      .dialog-foot
+        button.btn.btn-ghost(type="button" data-close) Cancel
+        button.btn.btn-primary(type="submit") Save
 
-      // File input handling
-      //- const fileInput = document.querySelector('.file-input');
-      //- const fileButton = document.querySelector('.button');
-      
-      //- fileInput?.addEventListener('change', function() {
-      //-   fileButton.textContent = this.files[0].name;
-      //- });
+  dialog#deleteFolderDialog.dialog
+    form(method="POST" action=`/folders/${currentFolder.id}/delete`)
+      +csrf
+      .dialog-head
+        h2 Delete folder?
+        button.icon-btn(type="button" data-close aria-label="Close")
+          +icon('x')
+      p “#{currentFolder.name}” and its #{files.length} #{files.length === 1 ? 'file' : 'files'} will be permanently deleted. This can't be undone.
+      .dialog-foot
+        button.btn.btn-ghost(type="button" data-close) Cancel
+        button.btn.btn-danger(type="submit") Delete folder
 
-      const fileInput = document.getElementById('fileUpload');
-      const fileNameSpan = document.getElementById('selectedFileName');
-      const uploadButton = document.getElementById('uploadButton');
-      const folderId = document.getElementById('')
-      fileInput?.addEventListener('change', function() {
-        if (this.files && this.files.length > 0) {
-          fileNameSpan.textContent = this.files[0].name;
-        } else {
-          fileNameSpan.textContent = '';
-        }
-      });
-
-      uploadButton.addEventListener('click', async function() {
-        if ( fileInput.files && fileInput.files.length > 0) {
-          currentFolderId = document.querySelector('.active').dataset.folderId
-          const formData = new FormData();
-          formData.append('file', fileInput.files[0]);
-          
-          // Add the current folder ID if you're organizing files into folders
-          formData.append('folderId', currentFolderId);
-
-          try {
-            const response = await fetch('/files/upload', {
-              method: 'POST',
-              body: formData
-            });
-
-            if (!response.ok) {
-              throw new Error('Upload failed');
-            }
-
-            const result = await response.json();
-            console.log('File uploaded successfully:', result);
-            
-            // Clear the file input and name display
-            fileInput.value = '';
-            fileNameSpan.textContent = '';
-
-            // Optionally, refresh the file list
-            // fetchFiles(currentFolderName);
-
-            alert('File uploaded successfully!');
-          } catch (error) {
-            console.error('Error uploading file:', error);
-            alert('Failed to upload file. Please try again.');
-          }
-        } else {
-          alert('Please select a file first');
-        }
-      });
-      
-    });
-    const modal = document.getElementById('newFolderModal');
-    const btn = document.getElementById('newFolderBtn');
-    const span = document.getElementsByClassName('close')[0];
-    const form = document.getElementById('newFolderForm');
-
-    btn.onclick = function() {
-      modal.style.display = 'flex';
-      document.getElementById('folderName').focus();
-       setTimeout(() => modal.classList.add('show'), 10);
-    }
-
-    span.onclick = function() {
-      
-      closeModal()
-    }
-
-    window.onclick = function(event) {
-      if (event.target == modal) {
-        closeModal()
-      }
-    }
-
-    form.onsubmit = async function(e) {
-      e.preventDefault();
-      const folderName = document.getElementById('folderName').value;
-      try {
-        const response = await fetch('/folders/create', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ name: folderName }),
-        });
-        if (!response.ok) {
-          throw new Error('Failed to create folder');
-        }
-        const newFolder = await response.json();
-        // Add the new folder to the list
-        const folderList = document.querySelector('.folder-list');
-        const li = document.createElement('li');
-        li.textContent = newFolder.name;
-        li.classList.add('folder-item');
-        folderList.appendChild(li);
-        // Close the modal and reset the form
-        modal.style.display = 'none';
-        form.reset();
-      } catch (error) {
-        console.error('Error:', error);
-        alert('Failed to create folder');
-      }
-    }
-    function closeModal() {
-      modal.classList.remove('show');
-      setTimeout(() => modal.style.display = 'none', 300);
-    }
+  dialog#deleteFileDialog.dialog
+    form#deleteFileForm(method="POST")
+      +csrf
+      .dialog-head
+        h2 Delete file?
+        button.icon-btn(type="button" data-close aria-label="Close")
+          +icon('x')
+      p
+        strong#deleteFileName
+        |  will be permanently deleted.
+      .dialog-foot
+        button.btn.btn-ghost(type="button" data-close) Cancel
+        button.btn.btn-danger(type="submit") Delete

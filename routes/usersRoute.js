@@ -1,22 +1,12 @@
-var express = require('express');
-var router = express.Router();
-const passport = require("../middleware/passport")
+const router = require('express').Router();
+const { requireGuest } = require('../middleware/authenticate');
+const rateLimit = require('../middleware/rateLimit');
+const users = require('../controllers/userController');
 
-var userController = require('../controllers/userController')
-
-router.post('/login',  passport.authenticate("local", {
-  successRedirect: "/",
-  failureRedirect: "/"
-}))
-
-router.get('/login', userController.getLogin)
-
-router.get('/logout', userController.getLogout)
-
-router.get('/signup', userController.getSignup)
-
-router.post('/sign-up', userController.postSignUp)
-
-
+router.get('/login', requireGuest, users.getLogin);
+router.post('/login', requireGuest, rateLimit({ max: 10 }), users.postLogin);
+router.get('/signup', requireGuest, users.getSignup);
+router.post('/signup', requireGuest, rateLimit({ max: 20 }), users.postSignup);
+router.post('/logout', users.postLogout);
 
 module.exports = router;

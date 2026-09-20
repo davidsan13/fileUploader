@@ -1,6 +1,13 @@
 extends layout
 
-block content
-  h1= message
-  h2= error.status
-  pre #{error.stack}
+block body
+  main.auth
+    .auth-card.center
+      p.error-code= status
+      h1= title
+      p.muted= message
+      if stack
+        details.stack-trace
+          summary Stack trace
+          pre= stack
+      a.btn.btn-primary(href="/") Back to my files

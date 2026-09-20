@@ -1,144 +1,88 @@
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
-const { body, validationResult } = require("express-validator")
-const asyncHandler = require('express-async-handler')
+const crypto = require('crypto');
+const multer = require('multer');
+const prisma = require('../lib/prisma');
+const { storage, pathFromUrl } = require('../lib/supabase');
+const { safeName } = require('../lib/format');
 
-const multer = require('multer')
-const { createClient } = require('@supabase/supabase-js')
-const supabaseUrl = process.env.SUPA_URL
-const supabaseKey = process.env.SUPABASE_KEY
-const supabase = createClient(supabaseUrl, supabaseKey)
-// const storage = multer.memoryStorage()
-const upload = multer({dest: 'uploads'})
-const { decode } = require('base64-arraybuffer')
-const path = require('path');
-const fs = require('fs');
+const MAX_BYTES = (parseInt(process.env.MAX_UPLOAD_MB, 10) || 25) * 1024 * 1024;
 
+// Memory storage: no temp files left in ./uploads if something fails halfway.
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_BYTES, files: 1 } }).single('file');
 
-exports.getFiles = asyncHandler(async (req, res) => {
-  try {
-    const folderName = req.query.folder;
-    // const folder = await prisma.folder.findFirst({ where: { name: folderName } });
-    const files = await prisma.file.findMany({
-      where:{ folderId: folderName }
-    });
-   
-    res.json(files);
-  } catch (error) {
-    console.error('Error fetching files:', error);
-    res.status(500).json({ error: 'Error fetching files' });
-  }
+// Only ever look files up through their folder's owner.
+const findOwnedFile = (fileId, userId) =>
+  prisma.file.findFirst({ where: { id: fileId, folder: { userId } } });
 
-});
+exports.upload = (req, res) => {
+  upload(req, res, async (err) => {
+    if (err) {
+      const msg = err.code === 'LIMIT_FILE_SIZE'
+        ? `File is too large (max ${MAX_BYTES / 1024 / 1024} MB)`
+        : 'Upload failed';
+      return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ error: msg });
+    }
+    if (!req.file) return res.status(400).json({ error: 'No file selected' });
 
-exports.postFile = asyncHandler( async(req, res) => {
-  if (!req.file) {
-    return res.status(400).send('No file uploaded.');
-  }
-
-  try {
-    
-    const file = req.file;
-    const filePath = path.join(file.path);
-
-    // Read file content
-    const fileContent = fs.readFileSync(filePath);
-    
-    const decodedFile = decode(file.originalname.toString('base64'));
-    console.log(decodedFile)
-
-    // Upload to Supabase Storage
-    const { data, error } = await supabase
-      .storage
-      .from('newFiles')
-      .upload(`${req.user.id}/${file.originalname}`, fileContent, {
-        contentType: file.mimetype,
+    let objectPath;
+    try {
+      const folder = await prisma.folder.findFirst({
+        where: { id: req.body.folderId, userId: req.user.id },
       });
-    console.log(data)
-    if(error) throw new Error(`Supabase upload error: ${error.message}`)
-    const { data: publicURL, error: urlError } = supabase
-      .storage
-      .from('newFiles')
-      .getPublicUrl(data.path)
-    
-    if(urlError) throw new Error(`Error getting public URL: ${urlError.message}`)
+      if (!folder) return res.status(404).json({ error: 'Folder not found' });
 
+      const original = Buffer.from(req.file.originalname, 'latin1').toString('utf8'); // multer mangles UTF-8 names
+      objectPath = `${req.user.id}/${crypto.randomUUID()}-${safeName(original)}`;
+
+      const bucket = storage();
+      const { error } = await bucket.upload(objectPath, req.file.buffer, {
+        contentType: req.file.mimetype,
+        upsert: false,
+      });
+      if (error) throw new Error(`Supabase upload error: ${error.message}`);
+
+      const { data } = bucket.getPublicUrl(objectPath);
+      const saved = await prisma.file.create({
+        data: { name: original, size: req.file.size, url: data.publicUrl, folderId: folder.id },
+      });
+      res.status(201).json({ file: { id: saved.id, name: saved.name, size: saved.size } });
+    } catch (e) {
+      console.error('Upload failed:', e);
+      if (objectPath) storage().remove([objectPath]).catch(() => {});
+      res.status(500).json({ error: 'Upload failed. Please try again.' });
+    }
+  });
+};
+
+exports.download = async (req, res, next) => {
+  try {
+    const file = await findOwnedFile(req.params.fileId, req.user.id);
+    if (!file) return res.status(404).render('error', { title: 'Not found', status: 404, message: 'File not found', stack: null });
+
+    const { data, error } = await storage().download(pathFromUrl(file.url, `${req.user.id}/${file.name}`));
     if (error) throw error;
 
-  
-    fs.unlinkSync(filePath);
-    console.log(publicURL)
-    
-    const savedFile = await prisma.file.create({
-      data: {
-        name: file.originalname,
-        size: file.size,
-        url: publicURL.publicUrl,
-        folderId: req.body.folderId // Assuming you're sending the folder ID
-      }
-    });
-
-    res.status(200).json({ message: 'File uploaded successfully', file: savedFile });
-  } catch (error) {
-    console.error('Error uploading file:', error);
-    res.status(500).json({ error: 'Server:Failed to upload file' });
-  }
-})
-
-exports.deleteFile = asyncHandler( async(req,res) => {
-  const fileId = req.params.fileId
-  const fileName = req.params.fileName
-  const filePath = `${req.user.id}/${fileName}`
-  console.log(filePath)
-  console.log(fileId)
-  try {
-    await prisma.file.delete({
-      where: {
-        id: fileId
-      }
-    })
-
-    const { data, error } = await supabase
-      .storage
-      .from('newFiles')
-      .remove([filePath])
-
-    if(error) throw error
-    res.redirect('/')
-  } catch(error) {
-    res.status(500).json({ error: 'Internal Server Error'})
-  }
-})
-exports.downloadFile = asyncHandler(async(req,res) => {
-  const fileId = req.params.fileId
-  try {
-    const fileURL = await prisma.file.findUnique({
-      where: {
-        id: fileId
-      },
-      select: {
-        name: true
-      }
-    })
-    const filePath = `${req.user.id}/${fileURL.name}`
-    console.log(filePath)
-    const { data, error } = await supabase
-      .storage
-      .from('newFiles')
-      .download(filePath)
-      // .getPublicUrl(fileURL.url, {
-      //   download: true,
-      // })
-    console.log(data.type)
-    const buffer = await data.arrayBuffer();
-    const fileBuffer = Buffer.from(buffer)
     res.set({
-      "Content-Type": data.type,
-      "Content-Disposition": `attachment; filename="${fileURL.name}"`,
+      'Content-Type': data.type || 'application/octet-stream',
+      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(file.name)}`,
     });
-    res.send(fileBuffer)
-    if (error) throw error
-  } catch(error) {
-    res.status(500).json({error: 'Internal Server Error'})
+    res.send(Buffer.from(await data.arrayBuffer()));
+  } catch (err) {
+    next(err);
   }
-})
+};
+
+exports.remove = async (req, res, next) => {
+  try {
+    const file = await findOwnedFile(req.params.fileId, req.user.id);
+    if (!file) return res.status(404).render('error', { title: 'Not found', status: 404, message: 'File not found', stack: null });
+
+    await prisma.file.delete({ where: { id: file.id } });
+    const { error } = await storage().remove([pathFromUrl(file.url, `${req.user.id}/${file.name}`)]);
+    if (error) console.error('Storage cleanup failed:', error.message);
+
+    req.flash('success', `“${file.name}” deleted`);
+    res.redirect(`/folders?folder=${file.folderId}`);
+  } catch (err) {
+    next(err);
+  }
+};

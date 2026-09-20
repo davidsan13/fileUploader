@@ -1,103 +1,76 @@
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
-const bcrypt = require('bcryptjs')
-const { body, validationResult } = require("express-validator")
-const asyncHandler = require('express-async-handler')
+const bcrypt = require('bcryptjs');
+const { body, validationResult } = require('express-validator');
+const prisma = require('../lib/prisma');
+const passport = require('../middleware/passport');
 
-exports.getSignup = asyncHandler(async( req, res, next ) => {
-  res.render('signup');
-})
+exports.getSignup = (req, res) => {
+  res.render('signup', { title: 'Create account', errors: [], values: {} });
+};
 
-exports.postSignUp =  [
-  body('username', 'User already Exist')
-    .custom((value, {req}) => {
-      return prisma.user.findFirst({
-        where: {
-          username: value
-        }
-      }).then(userDoc => {
-        if(userDoc) {
-          return Promise.reject('User already Exist')
-        }
-      })
-    }),
-  body('password', 'password must contain at least 5 character')
+exports.postSignup = [
+  body('username')
     .trim()
-    .isLength({min: 5})
-    .escape(),
-  body('confirmPW', 'Passwords Do Not Match')
-    .custom((value, {req}) => value === req.body.password).withMessage("The passwords do not match"),
+    .isLength({ min: 3, max: 30 }).withMessage('Username must be 3–30 characters')
+    .matches(/^[A-Za-z0-9_.-]+$/).withMessage('Username can only use letters, numbers, dots, dashes and underscores'),
+  // Passwords are deliberately NOT trimmed or escaped – that would silently change what the user typed.
+  body('password').isLength({ min: 8, max: 128 }).withMessage('Password must be at least 8 characters'),
+  body('confirmPassword')
+    .custom((value, { req }) => value === req.body.password).withMessage('Passwords do not match'),
 
-  asyncHandler(async (req, res,next) => {
-  const errors = validationResult(req)
+  async (req, res, next) => {
+    try {
+      const errors = validationResult(req).array();
+      const { username, password } = req.body;
+      const rerender = (errs) =>
+        res.status(400).render('signup', { title: 'Create account', errors: errs, values: { username } });
 
-  const username = req.body.username
-  const password = req.body.password
+      if (errors.length) return rerender(errors);
 
-  const encryptPW = await bcrypt.hash(password, 10)
-  
-  if(!errors.isEmpty()) {
-    res.render("sign-up", {
-      errors: errors.array(),
-    });
-    return
-  } else {
-    await prisma.user.create({
-      data: {
-        username: username,
-        password: encryptPW
-  
+      const taken = await prisma.user.findUnique({ where: { username } });
+      if (taken) return rerender([{ msg: 'That username is already taken' }]);
+
+      const user = await prisma.user.create({
+        data: { username, password: await bcrypt.hash(password, 12) },
+      });
+      req.login(user, (err) => {
+        if (err) return next(err);
+        req.flash('success', `Welcome, ${user.username}!`);
+        res.redirect('/');
+      });
+    } catch (err) {
+      if (err.code === 'P2002') {
+        return res.status(400).render('signup', {
+          title: 'Create account',
+          errors: [{ msg: 'That username is already taken' }],
+          values: { username: req.body.username },
+        });
       }
-    })
-    res.redirect('/')
-  }
-})]
+      next(err);
+    }
+  },
+];
 
-exports.getLogin = asyncHandler(async(req, res) => {
-  res.render('login')
-})
+exports.getLogin = (req, res) => {
+  res.render('login', { title: 'Log in' });
+};
 
-exports.postLogin = asyncHandler(async (username, password, done) => {
-  try {
-    const row = await prisma.user.findMany({
-      where: {username: username}
-    })
-    const user = row[0]
-    
+exports.postLogin = (req, res, next) => {
+  passport.authenticate('local', (err, user, info) => {
+    if (err) return next(err);
     if (!user) {
-      return done(null, false, { message: "Username does not exist" });
+      req.flash('error', info?.message || 'Invalid username or password');
+      return res.redirect('/users/login');
     }
-    const match = await bcrypt.compare(password, user.password);
-   
-    if (!match) {
-      // passwords do not match!
-      console.log("does not match")
-      return done(null, false, { message: "Incorrect password" })
-    }
-    return done(null, user);
-  } catch(err) {
-    return done(err);
-  }
-})
+    req.login(user, (loginErr) => {
+      if (loginErr) return next(loginErr);
+      res.redirect('/');
+    });
+  })(req, res, next);
+};
 
-exports.deserializeUser = asyncHandler(async (id, done) => {
-  try {
-    const row = await prisma.user.findMany({
-      where: { id: id }
-    })
-    const user = row[0]
-    done(null, user);
-  } catch(err) {
-    done(err);
-  }
-})
-
-exports.getLogout = asyncHandler(async( req, res, next ) => {
+exports.postLogout = (req, res, next) => {
   req.logout((err) => {
-    if (err) {
-      return next(err);
-    }
-    res.redirect("/");
+    if (err) return next(err);
+    res.redirect('/users/login');
   });
-})
-
+};

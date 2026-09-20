@@ -1,9 +1,18 @@
-function isAuthenticated(req, res, next) {
-  if (req.user) {
-      return next();
-  } else {
-      res.redirect('/users/login');  // Redirect to login if user is not authenticated
-  }
+function wantsJson(req) {
+  return req.xhr || (req.get('accept') || '').includes('application/json');
 }
 
-module.exports = isAuthenticated
+function requireAuth(req, res, next) {
+  if (req.isAuthenticated && req.isAuthenticated()) return next();
+  if (wantsJson(req)) return res.status(401).json({ error: 'Please log in' });
+  res.redirect('/users/login');
+}
+
+function requireGuest(req, res, next) {
+  if (req.isAuthenticated && req.isAuthenticated()) return res.redirect('/');
+  next();
+}
+
+module.exports = requireAuth;
+module.exports.requireAuth = requireAuth;
+module.exports.requireGuest = requireGuest;
